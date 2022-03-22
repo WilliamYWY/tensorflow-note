@@ -20,4 +20,4 @@ Compared with Keras (antother awsome machine learning package under TensorFlow),
 
 ## Content
 
-- [Conv2d layer & Dense layer & Softmax layer]()
+- [Conv2d layer & Dense layer & Softmax layer](https://github.com/WilliamYWY/tensorflow-note/tree/main/Conv2d)

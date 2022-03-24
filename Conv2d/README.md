@@ -20,7 +20,6 @@ This note use the dataset MNIST from tensorflow tutorial's example. Using conv2d
 
 - Single Softmax Layer
 - Conv2d + Max Pooling + Dense + Softmax
-- The loss function (Cross Entropy)
 
 ## Single Softmax Layer
 
@@ -93,7 +92,7 @@ y = tf.nn.softmax(tf.matmul(x,W)+b)
   
 For classification problem we often use **Cross Entropy** as loss funcition to train the model.  
 y_ is a placeholder which will be filled with **labels**(correct answer).  
-We will discuss the cross entropy function more in the end of this note.  
+We will discuss the cross entropy function more in other note.  
   
 We will also need an **optimizer** to regulate our training, which in here we use the **GradientDescentOptimizer** and the learning rate being set as 0.01.  
 The goal of the model will be **"try as hard as it can to reduce the cross entropy"**, so we use minimize function.

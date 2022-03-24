@@ -18,7 +18,6 @@ This note use the dataset MNIST from tensorflow tutorial's example. Using conv2d
 
 ## Content
 
-- MNIST Dataset
 - Single Softmax Layer
 - Conv2d + Max Pooling + Dense + Softmax
 - The loss function (Cross Entropy)
@@ -152,16 +151,264 @@ witth tf.Session() as sess:
     print(sess.run(accuracy, feed_dict={x: mnist.test.images, y_: mnist.test.labels}))
 ```
 
+## Conv2d + Max Pooling + Dense + Softmax
 
+Now let's try a more complex model with two convolution layer, two max pooling layer, one dence layer and one softmax layer.  
+  
+First we will create several function that help create different layer more conveniently.
+- ### Conv2d layer
+We will not discus how convolution layer work over here!  
+Instead we'll talk about what important element the convolution network need.  
+For a conv2d layer, we will need a kernel, a bias and also a activation function.
 
+```python
+def conv2d(x, output_channel, kernel, strides):
+    """
+    input kernel size [length, width]
+    strides int
+    """
+    #kernal size for 2d [length, width, channel, features]
+    kernel_shape = [kernel[0], kernel[1], x.get_shape()[-1].value, output_channel]
+    initial_W = tf.truncated_normal(kernel_shape, stddev=0.1) #std some what IMPORTANT
+    W = tf.Variable(initial_W)
+    
+    #Bias size = output_channel
+    initial_B = tf.constant(0.1, shape=[output_channel])
+    B = tf.Variable(initial_B)
+    #build layer + Bias
+    layer = tf.nn.conv2d(x, W, strides=[strides,strides,strides,strides], padding="SAME")
 
+    #use activation func
+    conv_act_layer = tf.nn.relu(layer + B)
 
+    return conv_act_layer
+```
+  
+Lets start with kernel.  
+The kernel for a 2d convolution should have four elements:
+- length of the kernel
+- width of the kernel
+- numbers of channel of input
+- numbers of channel of desired output (filters)
+  
+Which bulid up as array [length, width, channel, output_channel].  
+For the function input we only ask for the length and width for the kernel which saved in the para kernel.  
+The output channel will be saved separately.  
+>Note: x.get_shape()[-1].value will output the channel of input.  
 
+We need to generate weight with the shape of kernel for our layer, in here we use **tf.truncated_normal**.  
+>Note: tf.truncated_normal will generate random value from nomal distribution which within two standard error(stddev) from mean (in here 0).  
 
+After we initialize the value, we will asign it to our variable scope to be utilized by our model.
+>Note: tf.Variable will create a variable.
 
+```python
+#kernal size for 2d [length, width, channel, features]
+kernel_shape = [kernel[0], kernel[1], x.get_shape()[-1].value, output_channel]
+initial_W = tf.truncated_normal(kernel_shape, stddev=0.1) #std some what IMPORTANT
+W = tf.Variable(initial_W)
+```
 
+Alike weight, now we create bias here with the shape [output_channel] (same as the last dimension of the kernel).  
+We use **tf.constant** to initialize the value to 0.1, then we also asign it to our variable scope.
 
+```python
+#Bias size = output_channel
+initial_B = tf.constant(0.1, shape=[output_channel])
+B = tf.Variable(initial_B)
+```
 
+Then we can input parameters to build a conv2d layer.  
+We set padding here as SAME to ensure that the image stay the same size after processing.  
+>Note: strides moving steps = [batch, length, width, channel]
+```python
+layer = tf.nn.conv2d(x, W, strides=[strides,strides,strides,strides], padding="SAME")
+```
+
+Apply activation function to our layer and also add on bias.
+```python
+#use activation func
+conv_act_layer = tf.nn.relu(layer + B)
+```
+
+Done! We can return **conv_act_layer** finally!
+
+- ### Max poolong layer
+Max pooling will help to reduce the size of data while retaining the most important information(Maximum value).  
+Normally the kernel size will be set to [1, length, width, 1] for 2d max pooling.  
+And the strides usually being set as same as kernel.
+
+```python
+def max_pool(x, kernel, strides):
+    """
+    input kernel size [length, width]
+    strides int
+    """
+    max_pool_layer = tf.nn.max_pool(x, 
+                       ksize=[1, kernel[0], kernel[1], 1], 
+                       strides= [1, strides, strides, 1], 
+                       padding="SAME")
+
+    return max_pool_layer
+```
+We don't have to create weight and bias for this layer so we can just easily input the parameters then return the layer!
+  
+- ### Dense Layer
+Dense layer alikes softmax layer needed a weight and a bias and also need to provide how many output channels we want.
+```python
+def dense_layer(x, output_channel):
+    # weight
+    shape = [x.get_shape()[-1].value, output_channel]
+    initial_W = tf.truncated_normal(shape, stddev=0.1) #std some what IMPORTANT
+    W = tf.Variable(initial_W)
+    #bias
+    initial_B = tf.constant(0.1, shape=[output_channel])
+    B = tf.Variable(initial_B)
+
+    layer = tf.matmul(x, W) # (W * x)
+    act_layer = tf.nn.relu(layer + B)
+
+    return act_layer
+```
+
+The shape of our weight will be [input's size, output_channel].  
+Then we initialize it and create as a variable.
+```python
+# weight
+shape = [x.get_shape()[-1].value, output_channel]
+initial_W = tf.truncated_normal(shape, stddev=0.1) #std some what IMPORTANT
+W = tf.Variable(initial_W)
+```
+Same as bias.
+```python
+#bias
+initial_B = tf.constant(0.1, shape=[output_channel])
+B = tf.Variable(initial_B)
+```
+Mutiply input with the weight and add on bias, then apply activation function.
+```python
+layer = tf.matmul(x, W) # (W * x)
+act_layer = tf.nn.relu(layer + B)
+```
+Done! Return that act_layer !
+
+- ### Softmax Layer
+We have just talked  about the softmax layer previously, now we just need to wrap them into a function.  
+```python
+def softmax_layer(x, output_channel):
+    # weight
+    shape = [x.get_shape()[-1].value, output_channel]
+    initial_W = tf.truncated_normal(shape, stddev=0.1) #std some what IMPORTANT
+    W = tf.Variable(initial_W)
+    #bias
+    initial_B = tf.constant(0.1, shape=[output_channel])
+    B = tf.Variable(initial_B)
+
+    layer = tf.matmul(x, W)
+    act_layer = tf.nn.softmax(layer+B)
+
+    return act_layer
+```
+
+- ### Build up the Network
+After we create several function, we can now use those modules to build our network!  
+>Note: Below is the graph of our network.
+<img src="https://user-images.githubusercontent.com/92711171/159866495-157eecbd-5212-4aad-acf1-4cc70999b599.png" width="30%"/>   
+The sequance of the network:  
+  
+1. Conv2d
+2. Max pooling
+3. Conv2d
+4. Max pooling
+5. Dense
+6. Softmax
+
+```python
+#input placeholder
+x = tf.placeholder(dtype="float", shape=[None, 784])
+input_x = tf.reshape(x, shape=[-1, 28, 28, 1])
+
+#model network
+conv2d_1 = conv2d(input_x, 32, [5,5], 1)
+max_pool1 = max_pool(conv2d_1, [2,2], 2)
+conv2d_2 = conv2d(max_pool1, 64, [5,5], 1)
+max_pool2 = max_pool(conv2d_2, [2,2], 2)
+flatten = tf.reshape(max_pool2, [-1, max_pool2.get_shape()[1]*max_pool2.get_shape()[2]*max_pool2.get_shape()[3]])
+dense_1 = dense_layer(flatten, 1024)
+output = softmax_layer(dense_1, 10) #output = 10
+```
+First we also need to create a placeholder for input.
+However, this time we will need to reshape the data into a 2D array to fit in to our first conv2d layer.  
+-1 means that the reshape function will refer the size itself regarding the input.  
+>Note: If batch size = 20, the shape will be [20, 28, 28, 1]
+```python
+x = tf.placeholder(dtype="float", shape=[None, 784])
+input_x = tf.reshape(x, shape=[-1, 28, 28, 1])
+```
+
+Then we arrange our layers.  
+```python
+#model network
+conv2d_1 = conv2d(input_x, 32, [5,5], 1)
+max_pool1 = max_pool(conv2d_1, [2,2], 2)
+conv2d_2 = conv2d(max_pool1, 64, [5,5], 1)
+max_pool2 = max_pool(conv2d_2, [2,2], 2)
+flatten = tf.reshape(max_pool2, [-1, max_pool2.get_shape()[1]*max_pool2.get_shape()[2]*max_pool2.get_shape()[3]])
+dense_1 = dense_layer(flatten, 1024)
+output = softmax_layer(dense_1, 10) #output = 10
+
+```
+Before sending input to the dense_1 layer, we reshape(flatten) our output from the conv2d_2 layer  
+from four dimension to two dimension in order to fit the input size of dense layer.
+
+Great! Now we can again create loss function and ready to feed our data to the network!
+
+- ### Loss Function and Train
+Same as what we have done at the section of single layer, we create a cross entropy loss function for training and a accuracy function for testing.  
+```python
+#loss function
+y_ = tf.placeholder("float", shape=[None, 10]) #label
+cross_entropy = -1 * tf.reduce_sum(y_*tf.log(output)) #reduce_sum sum all the element
+#add optimizer
+train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+
+#test evaluation function (accuracy)
+acc_matrix = tf.equal(tf.argmax(output, 1), tf.argmax(y_, 1))
+acc_eval = tf.reduce_mean(tf.cast(acc_matrix, "float"))
+```
+
+Finally! Let's train our model!  
+```python
+# Train
+epoch = 5000
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for i in range(epoch):
+        batch = mnist.train.next_batch(50)
+        #visualize ACC every 50 epoch
+        if i % 50 == 0:
+            train_acc = acc_eval.eval(feed_dict={x: batch[0], y_:batch[1]})
+            print(f"Steps{i}: ACC: {train_acc}")
+        #train network
+        train_step.run(feed_dict={x: batch[0], y_:batch[1]})
+    test_acc = acc_eval.eval(feed_dict={x: mnist.test.images, y_:mnist.test.labels})
+    print(f"Network ACC: {test_acc}")
+```
+
+We evaluate the accuracy every 50 epochs.  
+**Remember to run the accuracy operation before training for that epoch, or the network can cheat!!!** 
+>Note: acc_eval.eval is same as using session to run the operation
+
+```python
+if i % 50 == 0:
+    train_acc = acc_eval.eval(feed_dict={x: batch[0], y_:batch[1]})
+    print(f"Steps{i}: ACC: {train_acc}")
+```
+Eventually we can receive the accuracy of the prediction of our network which is around 90~98%!  
+
+## Conclusion 
+After finishing this practice, you might be able to understand the basic of conv2d network and how to build up functions that help output a layer!  
+Give yourelf a big hand!👏👏👏👏
 
 
 
